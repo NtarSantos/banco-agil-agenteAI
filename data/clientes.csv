@@ -1,0 +1,4 @@
+cpf,nome,data_nascimento,score_atual,renda_mensal,limite_atual
+12345678900,João Silva,1985-05-15,799,3000.0,1000.0
+98765432100,Maria Oliveira,1985-05-15,800,8000.0,5000.0
+11122233344,Carlos Souza,2000-12-10,300,1500.0,200.0

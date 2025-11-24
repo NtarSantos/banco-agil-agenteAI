@@ -1,0 +1,8 @@
+langchain
+langchain-openai
+langchain-community
+langgraph
+pandas
+python-dotenv
+tavily-python
+streamlit
