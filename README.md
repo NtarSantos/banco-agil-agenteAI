@@ -56,5 +56,5 @@ O sistema foi construído utilizando o padrão **Multi-Agent System** orquestrad
 
 1. Clone o repositório:
 ```bash
-git clone [https://github.com/SEU-USUARIO/banco-agil-bot.git](https://github.com/SEU-USUARIO/banco-agil-bot.git)
-cd banco-agil-bot
+git clone [https://github.com/ntar-santos/banco-agil-agenteAI.git]
+](https://github.com/NtarSantos/banco-agil-agenteAI.git)
