@@ -1,60 +1,159 @@
-# 🏦 Banco Ágil - Agente Bancário Inteligente
+# 🏦 Banco Ágil - Agente Bancário Inteligente com LangGraph
 
-Solução desenvolvida para o desafio técnico de Agente Bancário com IA. O sistema utiliza uma arquitetura baseada em grafos (**LangGraph**) para orquestrar múltiplos agentes especializados, garantindo persistência de estado e execução de ferramentas complexas.
+> Uma solução de atendimento bancário baseada em **Multi-Agent Systems**, utilizando **LangGraph** para orquestração de estado, persistência de memória e ferramentas dinâmicas.
+
+---
 
 ## 📋 Visão Geral
-O projeto simula um atendimento bancário digital onde um cliente interage com uma Inteligência Artificial capaz de:
-- Autenticar usuários via base de dados (CSV).
-- Consultar cotações de moedas em tempo real (API externa).
-- Analisar e conceder crédito baseado em regras de negócio.
-- Conduzir entrevistas para recalculo de Score financeiro.
+
+Este projeto simula um sistema de atendimento bancário digital completo. Diferente de chatbots tradicionais, ele utiliza uma arquitetura de **Grafos de Estado (StateGraph)**. Isso permite que o assistente mantenha o contexto, gerencie permissões de acesso e execute fluxos complexos (como entrevistas passo a passo) sem "alucinar" ou perder o fio da meada.
+
+### 🎯 Principais Diferenciais Técnicos
+* **Arquitetura Stateful:** O sistema lembra quem é o usuário, se está logado e qual foi a última interação.
+* **Roteamento "Sticky" (Grudento):** Se o usuário está numa entrevista, o sistema bloqueia saídas acidentais até o fim do fluxo.
+* **Triagem Inteligente:** O agente de entrada atua como um "porteiro" que decide dinamicamente se deve conversar, validar dados ou direcionar para especialistas.
+* **Prevenção de Alucinação:** Ferramentas sensíveis (como validar CPF) só são ativadas se o input do usuário contiver padrões numéricos.
+
+---
 
 ## 🏗️ Arquitetura do Sistema
 
-O sistema foi construído utilizando o padrão **Multi-Agent System** orquestrado pelo **LangGraph**.
+O sistema é composto por nós (Nodes) especializados que compartilham um estado global (`BankState`).
 
-### Os Agentes (Nós do Grafo)
-1.  **Agente de Triagem:** Responsável pela segurança. Identifica se o usuário já está autenticado e direciona o fluxo. Implementa lógica de "Sondagem" vs "Validação".
-2.  **Roteador de Intenção:** Um classificador semântico que analisa a linguagem natural do usuário para encaminhá-lo ao departamento correto (Câmbio, Crédito ou Entrevista).
-3.  **Agente de Crédito:** Especialista financeiro. Possui acesso às ferramentas de leitura de CSV e escrita de solicitações. Segue regras rígidas de Score para aprovação.
-4.  **Agente de Entrevista:** Responsável pela reanálise. Coleta dados (Renda, Dívidas, etc.) e executa o algoritmo de recálculo de Score.
-5.  **Agente de Câmbio:** Conectado à internet (Tavily API) para buscar dados financeiros em tempo real.
+### 🧠 O Estado (Memory Schema)
+O "cérebro" da aplicação armazena:
+* `messages`: Histórico da conversa.
+* `autenticado` & `cpf`: Controle de sessão.
+* `ultimo_agente`: Memória de curto prazo para manter o contexto (Sticky Routing).
+* `tentativas_falhas`: Contador para bloqueio de segurança.
 
-### Fluxo de Dados
-- **Estado (State):** Mantido em memória durante a sessão (Streamlit Session State + LangGraph State), armazenando histórico de chat, CPF autenticado e contexto.
-- **Persistência:**
-    - `data/clientes.csv`: Base de usuários e scores.
-    - `data/score_limite.csv`: Regras de negócio para concessão de crédito.
-    - `data/solicitacoes_aumento_limite.csv`: Log de auditoria de todas as solicitações.
+### 👥 Os Agentes (Nodes)
 
-## ✨ Funcionalidades Implementadas
-- ✅ Autenticação de usuário (CPF/Data) contra base CSV.
-- ✅ Persistência de sessão (usuário não precisa logar a cada mensagem).
-- ✅ Consulta de limites e Score em tempo real.
-- ✅ Solicitação de aumento de limite com validação automática de regras.
-- ✅ Entrevista interativa para atualização de Score (Algoritmo ponderado).
-- ✅ Consulta de cotação do Dólar/Euro via API externa.
-- ✅ Interface de Chat amigável via Streamlit.
+1.  **Agente de Triagem (Super Node):**
+    * Atua como recepcionista e roteador.
+    * **Funil de Vendas:** Apresenta serviços antes de pedir dados.
+    * **Segurança:** Bloqueia o usuário após 3 tentativas falhas de autenticação.
+    * **Classificador:** Analisa a intenção (Crédito, Câmbio, Entrevista) com base no histórico da conversa.
 
-## 🛠️ Tecnologias e Escolhas Técnicas
+2.  **Agente de Crédito:**
+    * Consulta limites em tempo real (CSV).
+    * Processa solicitações de aumento.
+    * Aplica regras de negócio rígidas baseadas em Score.
 
-- **Python 3.12**: Linguagem base.
-- **LangGraph**: Escolhido ao invés de Chains simples do LangChain para permitir fluxos cíclicos e manutenção de estado robusta (Stateful), essencial para a lógica de "entrevista" e "autenticação".
-- **LangChain + OpenAI (GPT-4o-mini)**: Para o raciocínio dos agentes. O modelo `mini` foi escolhido por ser rápido e eficiente em custos, suficiente para classificação e uso de ferramentas.
-- **Pandas**: Para manipulação eficiente dos arquivos CSV (Leitura/Escrita).
-- **Streamlit**: Para criar uma interface de chat rápida e funcional para testes.
-- **Tavily API**: Para buscas na internet (Câmbio) sem alucinações.
+3.  **Agente de Entrevista:**
+    * Conduz um questionário interativo (Renda, Despesas, etc.).
+    * Utiliza lógica de persistência para não perder o foco entre as perguntas.
+    * **Cálculo Real:** Executa uma fórmula matemática ponderada para atualizar o Score no banco de dados.
 
-## 🚀 Como Executar
+4.  **Agente de Câmbio:**
+    * Conectado à API **Tavily** para buscar cotações de moedas em tempo real na web.
+
+---
+
+## ✨ Funcionalidades Detalhadas
+
+### 🔐 Autenticação & Segurança
+* Validação de CPF e Data de Nascimento contra base de dados (`data/clientes.csv`).
+* **Lockout:** Bloqueio automático após 3 erros consecutivos.
+* **Logout:** Comando "Sair" ou "Encerrar" limpa a sessão e o estado.
+
+### 💳 Gestão de Crédito
+* Consulta de limite disponível.
+* Solicitação de aumento com verificação automática de regras de Score.
+* Registro de auditoria: Todas as tentativas (aprovadas ou negadas) são salvas em `data/solicitacoes_aumento_limite.csv`.
+
+### 📝 Entrevista de Perfil (Fluxo Complexo)
+* Se o crédito for negado, o sistema oferece uma reanálise.
+* O fluxo de entrevista é "blindado": o roteador prioriza as respostas da entrevista sobre qualquer outra intenção até que o processo finalize.
+* Atualização física do Score do cliente no arquivo CSV após a conclusão.
+
+### 💰 Câmbio em Tempo Real
+* Busca ativa na internet para trazer valores atualizados de Dólar, Euro, etc.
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+* **Linguagem:** Python 3.12+
+* **Orquestração:** [LangGraph](https://langchain-ai.github.io/langgraph/) (Stateful Multi-Agent orchestration)
+* **LLM:** LangChain + OpenAI (`gpt-4o-mini`)
+* **Interface:** Streamlit (Chat UI com gestão de Session State)
+* **Dados:** Pandas (Manipulação de CSV)
+* **Web Search:** Tavily API
+
+---
+
+## 🚀 Como Executar o Projeto
 
 ### Pré-requisitos
-- Python 3.10+
-- Chave da OpenAI
-- Chave da Tavily (opcional, para câmbio)
+* Python instalado.
+* Chaves de API da **OpenAI** e **Tavily**.
 
-### Instalação
+### Passo a Passo
 
-1. Clone o repositório:
-```bash
-git clone [https://github.com/ntar-santos/banco-agil-agenteAI.git]
-](https://github.com/NtarSantos/banco-agil-agenteAI.git)
+1.  **Clone o repositório:**
+    ```bash
+    git clone [https://github.com/SEU-USUARIO/banco-agil-bot.git](https://github.com/SEU-USUARIO/banco-agil-bot.git)
+    cd banco-agil-bot
+    ```
+
+2.  **Crie o ambiente virtual e instale as dependências:**
+    ```bash
+    python -m venv venv
+    # Windows:
+    venv\Scripts\activate
+    # Linux/Mac:
+    source venv/bin/activate
+    
+    pip install -r requirements.txt
+    ```
+
+3.  **Configure as Variáveis de Ambiente:**
+    Crie um arquivo `.env` na raiz do projeto:
+    ```env
+    OPENAI_API_KEY="sua-chave-aqui"
+    TAVILY_API_KEY="sua-chave-aqui"
+    ```
+
+4.  **Gere os dados iniciais (Mock):**
+    ```bash
+    python setup_data.py
+    ```
+    *(Isso criará a pasta `data/` com clientes e regras fictícias).*
+
+5.  **Execute a aplicação:**
+    ```bash
+    streamlit run app.py
+    ```
+
+---
+
+## 🧪 Roteiro de Testes (Sugestão)
+
+1.  **Saudação:** Digite "Olá". (O sistema deve apresentar o menu sem pedir CPF).
+2.  **Interesse:** Digite "Quero ver meu limite". (O sistema pedirá o CPF).
+3.  **Login:** Use CPF `12345678900` e Data `1990-01-01`.
+4.  **Crédito (Reprovação):** Peça um aumento para `5000` (O sistema negará e oferecerá entrevista).
+5.  **Entrevista:** Aceite a entrevista ("Sim"). Responda as perguntas (Renda alta, sem dívidas).
+6.  **Sucesso:** Ao final, o sistema atualizará seu Score e redirecionará ao crédito.
+7.  **Câmbio:** Pergunte "Quanto está o dólar?".
+8.  **Logout:** Digite "Sair" para encerrar.
+
+---
+
+## 📂 Estrutura de Arquivos
+
+```text
+banco-agil-bot/
+├── app.py              # Interface Frontend (Streamlit)
+├── setup_data.py       # Script gerador de dados mock
+├── requirements.txt    # Dependências
+├── .env                # Chaves de API (Não comitado)
+├── data/               # Banco de dados (CSV)
+│   ├── clientes.csv
+│   └── solicitacoes...
+└── src/                # Lógica do Backend
+    ├── graph.py        # Definição do Grafo e Roteamento
+    ├── nodes.py        # Inteligência dos Agentes (Prompts)
+    ├── tools.py        # Ferramentas (Cálculos, Pandas, API)
+    └── state.py        # Schema de Memória
