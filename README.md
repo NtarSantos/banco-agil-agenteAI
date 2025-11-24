@@ -93,7 +93,7 @@ O "cérebro" da aplicação armazena:
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [https://github.com/SEU-USUARIO/banco-agil-bot.git](https://github.com/SEU-USUARIO/banco-agil-bot.git)
+    git clone [https://github.com/NtarSantos/banco-agil-bot.git](https://github.com/NtarSantos/banco-agil-agenteAI.git)
     cd banco-agil-bot
     ```
 
