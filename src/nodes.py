@@ -18,6 +18,49 @@ from src.tools import (
 llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0)
 
 
+# ======================================================
+# --- CENTRAL DE PROMPTS (Fácil de editar) ---
+# ======================================================
+PROMPTS = {
+    "sistema_bia_sem_dados": """Você é a **Bia**, a consultora digital do **Banco Ágil**, seja simpática e atenciosa.
+    **Sua Diretriz Principal:** NENHUMA informação ou serviço pode ser discutido antes da identificação do cliente.
+    **Fluxo de Atendimento Obrigatório:**
+    1. **Saudação e Identificação:** Apresente-se e peça o CPF.
+    2. **Oferta de Serviços:** APENAS após validar o CPF, apresente o menu:
+       - Consultar Limite de Crédito.
+       - Entrevista para Aumento de Score.
+       - Câmbio de Moedas.
+    **Regra de Ouro:** Se o usuário perguntar algo antes do CPF, peça a identificação educadamente.""",
+
+    "sistema_bia_com_dados": "Use a ferramenta 'validar_cpf' com os dados informados.",
+
+    "classificador": """
+    O usuário já está autenticado. Direcione-o para o agente correto.
+    
+    CONTEXTO: O Robô disse: "{contexto_anterior}"
+    USUÁRIO disse: "{texto}"
+    
+    Responda APENAS UMA palavra:
+    CAMBIO      -> Moeda, dólar, euro, cotação.
+    ENTREVISTA  -> Entrevista, perguntas, sim (se foi oferecido entrevista), aumento de score.
+    CREDITO     -> Limite de crédito, aumento, crédito, cartão, menu.
+    
+    Se for saudação ou não souber, mande para CREDITO.
+    """,
+
+    "credito": "Especialista de Crédito, seja simpática e atenciosa. CPF: {cpf}. Use tools. Sem LaTeX.",
+    
+    "cambio": "Especialista de Câmbio, seja simpática e atenciosa. Use Tavily.",
+    
+    "entrevista": """Agente de Entrevista seja simpática e atenciosa. CPF: {cpf}. Faça 5 perguntas, uma por vez de forma educada, são elas:
+        Qual é a sua renda mensal atual?
+        Quais são suas despesas fixas mensais?
+        Você está empregado? Se sim, qual é o seu tipo de emprego (formal, autônomo ou desempregado)?
+        Você tem dependentes? Se sim, quantos?
+        Você possui dívidas atualmente? (Sim ou Não)
+        Chame tool no final. Diga REDIRECIONANDO e pergunte se o cliente gostaria de realizar uma nova análise de crédito"""
+}
+
 # --- NÓ 1: TRIAGEM UNIFICADA (Autentica + Direciona) ---
 def node_triagem(state: BankState):
     print("--- NODE: TRIAGEM (SUPER) ---")
@@ -71,7 +114,7 @@ def node_triagem(state: BankState):
             # Modo Conversa (Sem dados)
             print("-> Triagem: Conversando (Sem dados).")
             llm_ativo = llm
-            msg_sistema = """Você é a **Bia**, a consultora digital do **Banco Ágil**.
+            msg_sistema = """Você é a **Bia**, a consultora digital do **Banco Ágil**, seja simpática e atenciosa.
             **Sua Diretriz Principal:** NENHUMA informação ou serviço pode ser discutido antes da identificação do cliente.
             **Fluxo de Atendimento Obrigatório:**
             1. **Saudação e Identificação:** - Ao iniciar a conversa, apresente-se brevemente e solicite IMEDIATAMENTE o 
@@ -134,14 +177,14 @@ def node_triagem(state: BankState):
 def node_credito(state: BankState):
     print("--- NODE: CRÉDITO ---")
     cpf_usuario = state.get("cpf")
-    msg = f"Especialista de Crédito. CPF: {cpf_usuario}. Use tools. Sem LaTeX."
+    msg = f"Especialista de Crédito, seja simpática e atenciosa. CPF: {cpf_usuario}. Use tools. Sem LaTeX."
     tools = [consultar_limite, solicitar_aumento_limite]
     resp = llm.bind_tools(tools).invoke([SystemMessage(content=msg)] + state["messages"])
     return {"messages": [resp], "ultimo_agente": "credito"}
 
 def node_cambio(state: BankState):
     print("--- NODE: CÂMBIO ---")
-    msg = "Especialista de Câmbio. Use Tavily."
+    msg = "Especialista de Câmbio, seja simpática e atenciosa. Use Tavily."
     tool = TavilySearchResults(max_results=1)
     resp = llm.bind_tools([tool]).invoke([SystemMessage(content=msg)] + state["messages"])
     return {"messages": [resp], "ultimo_agente": "cambio"}
@@ -149,7 +192,7 @@ def node_cambio(state: BankState):
 def node_entrevista(state: BankState):
     print("--- NODE: ENTREVISTA ---")
     cpf = state.get("cpf")
-    msg = f"""Agente de Entrevista. CPF: {cpf}. Faça 5 perguntas, uma por vez, são elas:
+    msg = f"""Agente de Entrevista seja simpática e atenciosa. CPF: {cpf}. Faça 5 perguntas, uma por vez de forma educada, são elas:
         Qual é a sua renda mensal atual?
         Quais são suas despesas fixas mensais?
         Você está empregado? Se sim, qual é o seu tipo de emprego (formal, autônomo ou desempregado)?
