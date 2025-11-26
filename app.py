@@ -52,6 +52,7 @@ if prompt := st.chat_input("Digite sua mensagem..."):
 
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
+        message_placeholder.markdown("⏳ *Processando...*")
         full_response = ""
         
         # PREPARA O INPUT PARA O GRAFO
